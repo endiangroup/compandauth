@@ -31,7 +31,7 @@ func (caa CounterCAA) IsLocked() bool {
 	return caa < 0
 }
 
-// Indicates if an incoming session CAA is considered valid. incomingCAA should
+// Indicates if an incoming session CAA is considered valid. s should
 // be the CAA value retrieved from a distributed session. delta represents
 // number of active distributed sessions you would like to maintain per CAA.
 func (caa CounterCAA) IsValid(s SessionCAA, delta int64) bool {
