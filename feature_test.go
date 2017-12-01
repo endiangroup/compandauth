@@ -8,19 +8,26 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func setCounterCAA(i int64) *compandauth.CounterCAA {
+	caa := compandauth.NewCounter()
+	*caa = compandauth.CounterCAA(i)
+
+	return caa
+}
+
 type Entity struct {
 	Delta int64
 	CAA   compandauth.CAA
 }
 
 type Session struct {
-	CAA int64
+	CAA compandauth.SessionCAA
 }
 
 func Test_Counter_ItConsidersUnissuedCAAsAsAlwaysInvalid(t *testing.T) {
 	tests := []struct {
 		Delta      int64
-		SessionCAA int64
+		SessionCAA compandauth.SessionCAA
 	}{
 		{Delta: -1, SessionCAA: -1},
 		{Delta: -1, SessionCAA: 0},
@@ -47,7 +54,7 @@ func Test_Counter_ItConsidersLockedCAAAsAlwaysInvalid(t *testing.T) {
 	tests := []struct {
 		CAA        int64
 		Delta      int64
-		SessionCAA int64
+		SessionCAA compandauth.SessionCAA
 	}{
 		{CAA: -1, Delta: -1, SessionCAA: -1},
 		{CAA: -1, Delta: -1, SessionCAA: 0},
@@ -72,9 +79,9 @@ func Test_Counter_ItConsidersLockedCAAAsAlwaysInvalid(t *testing.T) {
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%+v", test), func(t *testing.T) {
 			session := Session{CAA: test.SessionCAA}
-			entity := Entity{Delta: test.Delta, CAA: compandauth.CounterCAA(test.CAA)}
+			entity := Entity{Delta: test.Delta, CAA: setCounterCAA(test.CAA)}
 
-			entity.CAA = entity.CAA.Lock()
+			entity.CAA.Lock()
 
 			assert.False(t, entity.CAA.IsValid(session.CAA, entity.Delta))
 		})
@@ -99,7 +106,7 @@ func Test_Counter_OnlyTheLastDeltaSessionsAreConsideredValid(t *testing.T) {
 
 			for i := 0; i < test.N; i++ {
 				newSession := Session{}
-				newSession.CAA, entity.CAA = entity.CAA.Issue()
+				newSession.CAA = entity.CAA.Issue()
 
 				sessions = append(sessions, newSession)
 
