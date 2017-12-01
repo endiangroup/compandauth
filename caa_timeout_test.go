@@ -1,6 +1,7 @@
 package compandauth
 
 import (
+	"fmt"
 	"math"
 	"testing"
 	"time"
@@ -9,77 +10,144 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_IsLocked_ReturnsTrueWhenTimeCAAIsNegative(t *testing.T) {
-	assert.True(t, TimeoutCAA(-1).IsLocked(), "-1 should be locked")
-	assert.True(t, TimeoutCAA(-math.MaxInt64).IsLocked(), "-MaxInt64 should be locked")
+func setTimeoutCAA(i int64) *TimeoutCAA {
+	caa := NewTimeout()
+	*caa = TimeoutCAA(i)
+
+	return caa
 }
 
-func Test_IsLocked_ReturnsFalseWhenTimeCAAIsPostive(t *testing.T) {
-	assert.False(t, TimeoutCAA(1).IsLocked(), "1 should be unlocked")
-	assert.False(t, TimeoutCAA(5).IsLocked(), "5 should be unlocked")
-	assert.False(t, TimeoutCAA(math.MaxInt64).IsLocked(), "MaxInt64 should be considered unlocked")
-}
-
-func Test_Lock_IsIdempotentTimeCAA(t *testing.T) {
-	assert.True(t, TimeoutCAA(-4).Lock().IsLocked(), "Locking -4 should be considered locked")
-	assert.True(t, TimeoutCAA(-math.MaxInt64).Lock().IsLocked(), "Locking -MaxInt64 should be considered locked")
-}
-
-func Test_Lock_ReturnsNegativeCurrentTimeCAAValue(t *testing.T) {
-	now := time.Now().Unix()
-
+func Test_IsLocked_ReturnsTrueWhenTimeoutCAAIsNegative(t *testing.T) {
 	tests := []struct {
-		CAA         TimeoutCAA
-		ExpectedCAA TimeoutCAA
+		CAA *TimeoutCAA
+	}{
+		{CAA: setTimeoutCAA(-1)},
+		{CAA: setTimeoutCAA(-5)},
+		{CAA: setTimeoutCAA(-math.MaxInt64)},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%+v", test), func(t *testing.T) {
+			assert.True(t, test.CAA.IsLocked())
+		})
+	}
+}
+
+func Test_IsLocked_ReturnsFalseWhenTimeoutCAAIsPostive(t *testing.T) {
+	tests := []struct {
+		CAA *TimeoutCAA
+	}{
+		{CAA: setTimeoutCAA(1)},
+		{CAA: setTimeoutCAA(5)},
+		{CAA: setTimeoutCAA(math.MaxInt64)},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%+v", test), func(t *testing.T) {
+			assert.False(t, test.CAA.IsLocked())
+		})
+	}
+}
+
+func Test_Lock_IsIdempotentForTimeoutCAA(t *testing.T) {
+	tests := []struct {
+		CAA *TimeoutCAA
+	}{
+		{CAA: setTimeoutCAA(-1)},
+		{CAA: setTimeoutCAA(-5)},
+		{CAA: setTimeoutCAA(-math.MaxInt64)},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%+v", test), func(t *testing.T) {
+			test.CAA.Lock()
+
+			assert.True(t, test.CAA.IsLocked())
+		})
+	}
+}
+
+func Test_Lock_SetsNegativeTimeoutCAAValue(t *testing.T) {
+	tests := []struct {
+		CAA         *TimeoutCAA
+		ExpectedCAA *TimeoutCAA
 	}{
 		{
-			CAA:         TimeoutCAA(0),
-			ExpectedCAA: TimeoutCAA(-0),
+			CAA:         setTimeoutCAA(0),
+			ExpectedCAA: setTimeoutCAA(-0),
 		},
 		{
-			CAA:         TimeoutCAA(now),
-			ExpectedCAA: TimeoutCAA(-now),
+			CAA:         setTimeoutCAA(1),
+			ExpectedCAA: setTimeoutCAA(-1),
 		},
 		{
-			CAA:         TimeoutCAA(math.MaxInt64),
-			ExpectedCAA: TimeoutCAA(-math.MaxInt64),
+			CAA:         setTimeoutCAA(math.MaxInt64),
+			ExpectedCAA: setTimeoutCAA(-math.MaxInt64),
 		},
 	}
 
 	for _, test := range tests {
-		assert.Equal(t, test.ExpectedCAA, test.CAA.Lock())
+		test.CAA.Lock()
+
+		assert.Equal(t, test.ExpectedCAA, test.CAA)
 	}
 }
 
-func Test_Unlock_IsIdempotentTimeCAA(t *testing.T) {
-	assert.False(t, TimeoutCAA(0).Unlock().IsLocked(), "Unlocking 0 should be considered unlocked")
-	assert.False(t, TimeoutCAA(1).Unlock().IsLocked(), "Unlocking 1 should be considered unlocked")
-	assert.False(t, TimeoutCAA(time.Now().Unix()).Unlock().IsLocked(), "Unlocking 5 should be considered unlocked")
-	assert.False(t, TimeoutCAA(math.MaxInt64).Unlock().IsLocked(), "Unlocking MaxInt64 should be considered unlocked")
+func Test_Unlock_IsIdempotentForTimeoutCAA(t *testing.T) {
+	tests := []struct {
+		CAA *TimeoutCAA
+	}{
+		{CAA: setTimeoutCAA(1)},
+		{CAA: setTimeoutCAA(5)},
+		{CAA: setTimeoutCAA(math.MaxInt64)},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%+v", test), func(t *testing.T) {
+			test.CAA.Unlock()
+
+			assert.False(t, test.CAA.IsLocked())
+		})
+	}
 }
 
-func Test_IsValid_ReturnsFalseIfTimeCAAIsLocked(t *testing.T) {
-	now := time.Now().Unix()
+func Test_IsValid_ReturnsFalseIfTimeoutCAAIsLocked(t *testing.T) {
+	tests := []struct {
+		CAA        *TimeoutCAA
+		SessionCAA SessionCAA
+		Delta      int64
+	}{
+		{CAA: setTimeoutCAA(-1), Delta: -1, SessionCAA: -1},
+		{CAA: setTimeoutCAA(-1), Delta: -1, SessionCAA: 0},
+		{CAA: setTimeoutCAA(-1), Delta: -1, SessionCAA: 1},
+		{CAA: setTimeoutCAA(-1), Delta: 0, SessionCAA: -1},
+		{CAA: setTimeoutCAA(-1), Delta: 0, SessionCAA: 0},
+		{CAA: setTimeoutCAA(-1), Delta: 0, SessionCAA: 1},
+		{CAA: setTimeoutCAA(-1), Delta: 1, SessionCAA: -1},
+		{CAA: setTimeoutCAA(-1), Delta: 1, SessionCAA: 0},
+		{CAA: setTimeoutCAA(-1), Delta: 1, SessionCAA: 1},
+	}
 
-	assert.False(t, TimeoutCAA(-1).IsValid(0, 1))
-	assert.False(t, TimeoutCAA(1).Lock().IsValid(0, 1))
-	assert.False(t, TimeoutCAA(now).Lock().IsValid(now-5, 10))
-	assert.False(t, TimeoutCAA(-math.MaxInt64).IsValid(1, 2))
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%+v", test), func(t *testing.T) {
+			assert.False(t, test.CAA.IsValid(test.SessionCAA, test.Delta))
+		})
+	}
 }
 
-func Test_IsValid_ReturnsFalseIfTimeCAAHasNotIssued(t *testing.T) {
-	assert.False(t, TimeoutCAA(0).IsValid(0, 0))
+func Test_IsValid_ReturnsFalseIfTimeoutCAAHasNotIssued(t *testing.T) {
+	assert.False(t, NewTimeout().IsValid(0, 0))
 }
 
-func Test_IsValid_ReturnsFalseIfIncomingCAAWasIssuedBeforeTimeCAA(t *testing.T) {
-	now := time.Now().Unix()
+func Test_IsValid_ReturnsFalseIfSessionCAAWasIssuedBeforeTimeoutCAA(t *testing.T) {
+	now := SessionCAA(time.Now().Unix())
 
 	assert.False(t, TimeoutCAA(1).IsValid(0, 1))
 	assert.False(t, TimeoutCAA(now).IsValid(now-1, 10))
 }
 
-func Test_IsValid_ReturnsTrueIfIncomingCAAPlusDeltaIsAfterOrEqualToNow(t *testing.T) {
-	now := time.Now().Unix()
+func Test_IsValid_ReturnsTrueIfSessionCAAPlusDeltaIsAfterOrEqualToNow(t *testing.T) {
+	now := SessionCAA(time.Now().Unix())
 
 	assert.True(t, TimeoutCAA(1).IsValid(now, 0))
 	assert.True(t, TimeoutCAA(1).IsValid(now, 1))
@@ -91,108 +159,117 @@ func Test_Issue_SetsTimeCAAToNowOnFirstIssue(t *testing.T) {
 	now := time.Now()
 	clock.NowForce(now)
 	defer clock.NowReset()
+	caa := NewTimeout()
 
-	_, timeCAA := TimeoutCAA(0).Issue()
+	caa.Issue()
 
-	assert.Equal(t, now.Unix(), int64(timeCAA.(TimeoutCAA)))
+	assert.Equal(t, now.Unix(), int64(*caa))
 }
 
-func Test_Issue_ReturnsNowAndCurrentTimeCAAAfterFirstIssue(t *testing.T) {
+func Test_Issue_ReturnsNowAndCurrentTimeoutCAAAfterFirstIssue(t *testing.T) {
 	now := time.Now()
 	clock.NowForce(now)
 	defer clock.NowReset()
 
 	tests := []struct {
-		CAA                TimeoutCAA
-		ExpectedCAA        TimeoutCAA
+		CAA                *TimeoutCAA
+		ExpectedCAA        *TimeoutCAA
 		ExpectedSessionCAA int64
 	}{
 		{
-			CAA:                TimeoutCAA(1),
-			ExpectedCAA:        TimeoutCAA(1),
+			CAA:                setTimeoutCAA(0),
+			ExpectedCAA:        setTimeoutCAA(now.Unix()),
 			ExpectedSessionCAA: now.Unix(),
 		},
 		{
-			CAA:                TimeoutCAA(now.Unix() - 500),
-			ExpectedCAA:        TimeoutCAA(now.Unix() - 500),
+			CAA:                setTimeoutCAA(1),
+			ExpectedCAA:        setTimeoutCAA(1),
 			ExpectedSessionCAA: now.Unix(),
 		},
 		{
-			CAA:                TimeoutCAA(math.MaxInt64),
-			ExpectedCAA:        TimeoutCAA(math.MaxInt64),
-			ExpectedSessionCAA: now.Unix(),
-		},
-		{
-			CAA:                TimeoutCAA(-math.MaxInt64),
-			ExpectedCAA:        TimeoutCAA(-math.MaxInt64),
+			CAA:                setTimeoutCAA(math.MaxInt64),
+			ExpectedCAA:        setTimeoutCAA(math.MaxInt64),
 			ExpectedSessionCAA: now.Unix(),
 		},
 	}
 
 	for _, test := range tests {
-		sessionCAA, caa := test.CAA.Issue()
+		t.Run(fmt.Sprintf("%+v", test), func(t *testing.T) {
+			sessionCAA := test.CAA.Issue()
 
-		assert.Equal(t, test.ExpectedSessionCAA, sessionCAA)
-		assert.Equal(t, test.ExpectedCAA, caa)
+			assert.Equal(t, SessionCAA(test.ExpectedSessionCAA), sessionCAA)
+			assert.Equal(t, test.ExpectedCAA, test.CAA)
+		})
 	}
 }
 
-func Test_Revoke_ReturnsUnmodifiedTimeCAAWhenItHasNeverIssued(t *testing.T) {
-	assert.Equal(t, TimeoutCAA(0), TimeoutCAA(0).Revoke(10))
+func Test_Revoke_HasNoEffectOnUnissuedTimeoutCAA(t *testing.T) {
+	caa := NewTimeout()
+	caa.Revoke(10)
+
+	assert.Equal(t, NewTimeout(), caa)
 }
 
 func Test_Revoke_ReturnsNAsNegativeTimeCAAWhenLocked(t *testing.T) {
 	tests := []struct {
-		CAA         TimeoutCAA
+		CAA         *TimeoutCAA
+		ExpectedCAA *TimeoutCAA
 		RevokeN     int64
-		ExpectedCAA TimeoutCAA
 	}{
 		{
-			CAA:         TimeoutCAA(-1),
+			CAA:         setTimeoutCAA(-1),
+			ExpectedCAA: setTimeoutCAA(-2),
 			RevokeN:     2,
-			ExpectedCAA: TimeoutCAA(-2),
 		},
 		{
-			CAA:         TimeoutCAA(-4),
+			CAA:         setTimeoutCAA(-4),
+			ExpectedCAA: setTimeoutCAA(-10),
 			RevokeN:     -10,
-			ExpectedCAA: TimeoutCAA(-10),
 		},
 		{
-			CAA:         TimeoutCAA(-1),
+			CAA:         setTimeoutCAA(-1),
+			ExpectedCAA: setTimeoutCAA(-math.MaxInt64),
 			RevokeN:     math.MaxInt64,
-			ExpectedCAA: TimeoutCAA(-math.MaxInt64),
 		},
 	}
 
 	for _, test := range tests {
-		assert.Equal(t, test.ExpectedCAA, test.CAA.Revoke(test.RevokeN))
+		t.Run(fmt.Sprintf("%+v", test), func(t *testing.T) {
+			test.CAA.Revoke(test.RevokeN)
+
+			assert.Equal(t, test.ExpectedCAA, test.CAA)
+		})
 	}
 }
 
 func Test_Revoke_ReturnsNAsTimeCAA(t *testing.T) {
 	tests := []struct {
-		CAA         TimeoutCAA
+		CAA         *TimeoutCAA
+		ExpectedCAA *TimeoutCAA
 		RevokeN     int64
-		ExpectedCAA TimeoutCAA
 	}{
 		{
-			CAA:         TimeoutCAA(1),
+			CAA:         setTimeoutCAA(1),
+			ExpectedCAA: setTimeoutCAA(1),
 			RevokeN:     1,
-			ExpectedCAA: TimeoutCAA(1),
 		},
 		{
-			CAA:         TimeoutCAA(4),
+			CAA:         setTimeoutCAA(4),
+			ExpectedCAA: setTimeoutCAA(10),
 			RevokeN:     10,
-			ExpectedCAA: TimeoutCAA(10),
 		},
 		{
-			CAA:         TimeoutCAA(clock.Now().Unix()),
+			CAA:         setTimeoutCAA(clock.Now().Unix()),
+			ExpectedCAA: setTimeoutCAA(math.MaxInt64),
 			RevokeN:     math.MaxInt64,
-			ExpectedCAA: TimeoutCAA(math.MaxInt64),
 		},
 	}
 
 	for _, test := range tests {
-		assert.Equal(t, test.ExpectedCAA, test.CAA.Revoke(test.RevokeN))
+		t.Run(fmt.Sprintf("%+v", test), func(t *testing.T) {
+			test.CAA.Revoke(test.RevokeN)
+
+			assert.Equal(t, test.ExpectedCAA, test.CAA)
+		})
 	}
 }

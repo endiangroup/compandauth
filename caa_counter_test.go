@@ -15,7 +15,7 @@ func setCounterCAA(i int64) *CounterCAA {
 	return caa
 }
 
-func Test_IsLocked_ReturnsTrueWhenCAAIsNegative(t *testing.T) {
+func Test_IsLocked_ReturnsTrueWhenCounterCAAIsNegative(t *testing.T) {
 	tests := []struct {
 		CAA *CounterCAA
 	}{
@@ -31,7 +31,7 @@ func Test_IsLocked_ReturnsTrueWhenCAAIsNegative(t *testing.T) {
 	}
 }
 
-func Test_IsLocked_ReturnsFalseWhenCAAIsPostive(t *testing.T) {
+func Test_IsLocked_ReturnsFalseWhenCounterCAAIsPostive(t *testing.T) {
 	tests := []struct {
 		CAA *CounterCAA
 	}{
@@ -47,7 +47,7 @@ func Test_IsLocked_ReturnsFalseWhenCAAIsPostive(t *testing.T) {
 	}
 }
 
-func Test_Lock_IsIdempotent(t *testing.T) {
+func Test_Lock_IsIdempotentForCounterCAA(t *testing.T) {
 	tests := []struct {
 		CAA *CounterCAA
 	}{
@@ -65,7 +65,7 @@ func Test_Lock_IsIdempotent(t *testing.T) {
 	}
 }
 
-func Test_Lock_SetsNegativeCurrentCAAValue(t *testing.T) {
+func Test_Lock_SetsNegativeCounterCAAValue(t *testing.T) {
 	tests := []struct {
 		CAA         *CounterCAA
 		ExpectedCAA *CounterCAA
@@ -91,7 +91,7 @@ func Test_Lock_SetsNegativeCurrentCAAValue(t *testing.T) {
 	}
 }
 
-func Test_Unlock_IsIdempotent(t *testing.T) {
+func Test_Unlock_IsIdempotentForCounterCAA(t *testing.T) {
 	tests := []struct {
 		CAA *CounterCAA
 	}{
@@ -109,7 +109,7 @@ func Test_Unlock_IsIdempotent(t *testing.T) {
 	}
 }
 
-func Test_IsValid_ReturnsFalseIfCAAIsLocked(t *testing.T) {
+func Test_IsValid_ReturnsFalseIfCounterCAAIsLocked(t *testing.T) {
 	tests := []struct {
 		CAA        *CounterCAA
 		SessionCAA SessionCAA
@@ -133,11 +133,11 @@ func Test_IsValid_ReturnsFalseIfCAAIsLocked(t *testing.T) {
 	}
 }
 
-func Test_IsValid_ReturnsFalseIfCAAHasNotIssued(t *testing.T) {
+func Test_IsValid_ReturnsFalseIfCounterCAAHasNotIssued(t *testing.T) {
 	assert.False(t, NewCounter().IsValid(0, 0))
 }
 
-func Test_IsValid_ReturnsTrueIfSessionCAAPlusDeltaIsGreaterThanOrEqualToCurrentCAA(t *testing.T) {
+func Test_IsValid_ReturnsTrueIfSessionCAAPlusDeltaIsGreaterThanOrEqualToCounterCAA(t *testing.T) {
 	assert.True(t, setCounterCAA(1).IsValid(0, 1))
 	assert.True(t, setCounterCAA(50).IsValid(45, 10))
 }
@@ -175,7 +175,7 @@ func Test_Issue_ReturnsNextSessionCAAValueAndIncrementsCounterCAA(t *testing.T) 
 	}
 }
 
-func Test_Issue_ReturnsNextSessionCAAValueAndIncrementedCAAWhenIsLocked(t *testing.T) {
+func Test_Issue_ReturnsNextSessionCAAValueAndIncrementedCounterCAAWhenIsLocked(t *testing.T) {
 	tests := []struct {
 		CAA                *CounterCAA
 		ExpectedCAA        *CounterCAA
@@ -207,14 +207,14 @@ func Test_Issue_ReturnsNextSessionCAAValueAndIncrementedCAAWhenIsLocked(t *testi
 	}
 }
 
-func Test_Revoke_HasNoEffectOnUnissuedCAA(t *testing.T) {
+func Test_Revoke_HasNoEffectOnUnissuedCounterCAA(t *testing.T) {
 	caa := NewCounter()
 	caa.Revoke(10)
 
 	assert.Equal(t, NewCounter(), caa)
 }
 
-func Test_Revoke_IncrementsCAAWithRevocationsWhenLocked(t *testing.T) {
+func Test_Revoke_IncrementsCounterCAAWithRevocationsWhenLocked(t *testing.T) {
 	tests := []struct {
 		CAA         *CounterCAA
 		ExpectedCAA *CounterCAA
@@ -246,7 +246,7 @@ func Test_Revoke_IncrementsCAAWithRevocationsWhenLocked(t *testing.T) {
 	}
 }
 
-func Test_Revoke_ReturnsCAAWithRevocations(t *testing.T) {
+func Test_Revoke_ReturnsCounterCAAWithRevocations(t *testing.T) {
 	tests := []struct {
 		CAA         *CounterCAA
 		ExpectedCAA *CounterCAA
