@@ -1,13 +1,15 @@
 package compandauth
 
+type SessionCAA int64
+
 type CAA interface {
-	Lock() CAA
-	Unlock() CAA
+	Lock()
+	Unlock()
 	IsLocked() bool
 
-	IsValid(int64, int64) bool
+	IsValid(SessionCAA, int64) bool
 
-	Revoke(int64) CAA
-	Issue() (int64, CAA)
+	Revoke(int64)
+	Issue() SessionCAA
 	HasIssued() bool
 }

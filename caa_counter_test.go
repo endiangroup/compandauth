@@ -1,198 +1,279 @@
 package compandauth
 
 import (
+	"fmt"
 	"math"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_IsLocked_ReturnsTrueWhenCAAIsNegative(t *testing.T) {
-	assert.True(t, CounterCAA(-1).IsLocked(), "-1 should be locked")
-	assert.True(t, CounterCAA(-math.MaxInt64).IsLocked(), "-MaxInt64 should be locked")
+func setCounterCAA(i int64) *CounterCAA {
+	caa := NewCounter()
+	*caa = CounterCAA(i)
 
-	assert.True(t, CounterCAA(1).Lock().IsLocked(), "Locking 1 should be considered locked")
-	assert.True(t, CounterCAA(math.MaxInt64).Lock().IsLocked(), "Locking MaxInt64 should be considered locked")
+	return caa
+}
+
+func Test_IsLocked_ReturnsTrueWhenCAAIsNegative(t *testing.T) {
+	tests := []struct {
+		CAA *CounterCAA
+	}{
+		{CAA: setCounterCAA(-1)},
+		{CAA: setCounterCAA(-5)},
+		{CAA: setCounterCAA(-math.MaxInt64)},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%+v", test), func(t *testing.T) {
+			assert.True(t, test.CAA.IsLocked())
+		})
+	}
 }
 
 func Test_IsLocked_ReturnsFalseWhenCAAIsPostive(t *testing.T) {
-	assert.False(t, CounterCAA(1).IsLocked(), "1 should be unlocked")
-	assert.False(t, CounterCAA(5).IsLocked(), "5 should be unlocked")
-	assert.False(t, CounterCAA(math.MaxInt64).IsLocked(), "MaxInt64 should be considered unlocked")
+	tests := []struct {
+		CAA *CounterCAA
+	}{
+		{CAA: setCounterCAA(1)},
+		{CAA: setCounterCAA(5)},
+		{CAA: setCounterCAA(math.MaxInt64)},
+	}
 
-	assert.False(t, CounterCAA(-1).Unlock().IsLocked(), "Unlocking -1 should be considered unlocked")
-	assert.False(t, CounterCAA(-math.MaxInt64).Unlock().IsLocked(), "Unlocking -MaxInt64 should be considered unlocked")
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%+v", test), func(t *testing.T) {
+			assert.False(t, test.CAA.IsLocked())
+		})
+	}
 }
 
 func Test_Lock_IsIdempotent(t *testing.T) {
-	assert.True(t, CounterCAA(-4).Lock().IsLocked(), "Locking -4 should be considered locked")
-	assert.True(t, CounterCAA(-math.MaxInt64).Lock().IsLocked(), "Locking -MaxInt64 should be considered locked")
+	tests := []struct {
+		CAA *CounterCAA
+	}{
+		{CAA: setCounterCAA(-1)},
+		{CAA: setCounterCAA(-5)},
+		{CAA: setCounterCAA(-math.MaxInt64)},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%+v", test), func(t *testing.T) {
+			test.CAA.Lock()
+
+			assert.True(t, test.CAA.IsLocked())
+		})
+	}
 }
 
-func Test_Lock_ReturnsNegativeCurrentCAAValue(t *testing.T) {
+func Test_Lock_SetsNegativeCurrentCAAValue(t *testing.T) {
 	tests := []struct {
-		CAA         CounterCAA
-		ExpectedCAA CounterCAA
+		CAA         *CounterCAA
+		ExpectedCAA *CounterCAA
 	}{
 		{
-			CAA:         CounterCAA(0),
-			ExpectedCAA: CounterCAA(-0),
+			CAA:         setCounterCAA(0),
+			ExpectedCAA: setCounterCAA(-0),
 		},
 		{
-			CAA:         CounterCAA(1),
-			ExpectedCAA: CounterCAA(-1),
+			CAA:         setCounterCAA(1),
+			ExpectedCAA: setCounterCAA(-1),
 		},
 		{
-			CAA:         CounterCAA(math.MaxInt64),
-			ExpectedCAA: CounterCAA(-math.MaxInt64),
+			CAA:         setCounterCAA(math.MaxInt64),
+			ExpectedCAA: setCounterCAA(-math.MaxInt64),
 		},
 	}
 
 	for _, test := range tests {
-		assert.Equal(t, test.ExpectedCAA, test.CAA.Lock())
+		test.CAA.Lock()
+
+		assert.Equal(t, test.ExpectedCAA, test.CAA)
 	}
 }
 
 func Test_Unlock_IsIdempotent(t *testing.T) {
-	assert.False(t, CounterCAA(0).Unlock().IsLocked(), "Unlocking 0 should be considered unlocked")
-	assert.False(t, CounterCAA(1).Unlock().IsLocked(), "Unlocking 1 should be considered unlocked")
-	assert.False(t, CounterCAA(5).Unlock().IsLocked(), "Unlocking 5 should be considered unlocked")
-	assert.False(t, CounterCAA(math.MaxInt64).Unlock().IsLocked(), "Unlocking MaxInt64 should be considered unlocked")
+	tests := []struct {
+		CAA *CounterCAA
+	}{
+		{CAA: setCounterCAA(1)},
+		{CAA: setCounterCAA(5)},
+		{CAA: setCounterCAA(math.MaxInt64)},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%+v", test), func(t *testing.T) {
+			test.CAA.Unlock()
+
+			assert.False(t, test.CAA.IsLocked())
+		})
+	}
 }
 
 func Test_IsValid_ReturnsFalseIfCAAIsLocked(t *testing.T) {
-	assert.False(t, CounterCAA(-1).IsValid(0, 1))
-	assert.False(t, CounterCAA(1).Lock().IsValid(0, 1))
-	assert.False(t, CounterCAA(50).Lock().IsValid(45, 10))
-	assert.False(t, CounterCAA(-math.MaxInt64).IsValid(1, 2))
+	tests := []struct {
+		CAA        *CounterCAA
+		SessionCAA SessionCAA
+		Delta      int64
+	}{
+		{CAA: setCounterCAA(-1), Delta: -1, SessionCAA: -1},
+		{CAA: setCounterCAA(-1), Delta: -1, SessionCAA: 0},
+		{CAA: setCounterCAA(-1), Delta: -1, SessionCAA: 1},
+		{CAA: setCounterCAA(-1), Delta: 0, SessionCAA: -1},
+		{CAA: setCounterCAA(-1), Delta: 0, SessionCAA: 0},
+		{CAA: setCounterCAA(-1), Delta: 0, SessionCAA: 1},
+		{CAA: setCounterCAA(-1), Delta: 1, SessionCAA: -1},
+		{CAA: setCounterCAA(-1), Delta: 1, SessionCAA: 0},
+		{CAA: setCounterCAA(-1), Delta: 1, SessionCAA: 1},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%+v", test), func(t *testing.T) {
+			assert.False(t, test.CAA.IsValid(test.SessionCAA, test.Delta))
+		})
+	}
 }
 
 func Test_IsValid_ReturnsFalseIfCAAHasNotIssued(t *testing.T) {
-	assert.False(t, CounterCAA(0).IsValid(0, 0))
+	assert.False(t, NewCounter().IsValid(0, 0))
 }
 
-func Test_IsValid_ReturnsTrueIfIncomingCAAPlusDeltaIsGreaterThanOrEqualToCurrentCAA(t *testing.T) {
-	assert.True(t, CounterCAA(1).IsValid(0, 1))
-	assert.True(t, CounterCAA(50).IsValid(45, 10))
+func Test_IsValid_ReturnsTrueIfSessionCAAPlusDeltaIsGreaterThanOrEqualToCurrentCAA(t *testing.T) {
+	assert.True(t, setCounterCAA(1).IsValid(0, 1))
+	assert.True(t, setCounterCAA(50).IsValid(45, 10))
 }
 
-func Test_Issue_ReturnsSessionCAAValueAndIncrementedCAAValue(t *testing.T) {
+func Test_Issue_ReturnsNextSessionCAAValueAndIncrementsCounterCAA(t *testing.T) {
 	tests := []struct {
-		CAA                CounterCAA
-		ExpectedCAA        CounterCAA
-		ExpectedSessionCAA int64
+		CAA                *CounterCAA
+		ExpectedCAA        *CounterCAA
+		ExpectedSessionCAA SessionCAA
 	}{
 		{
-			CAA:                CounterCAA(0),
-			ExpectedCAA:        CounterCAA(1),
+			CAA:                setCounterCAA(0),
+			ExpectedCAA:        setCounterCAA(1),
 			ExpectedSessionCAA: 0,
 		},
 		{
-			CAA:                CounterCAA(1),
-			ExpectedCAA:        CounterCAA(2),
+			CAA:                setCounterCAA(1),
+			ExpectedCAA:        setCounterCAA(2),
 			ExpectedSessionCAA: 1,
 		},
 		{
-			CAA:                CounterCAA(math.MaxInt64 - 1),
-			ExpectedCAA:        CounterCAA(math.MaxInt64),
+			CAA:                setCounterCAA(math.MaxInt64 - 1),
+			ExpectedCAA:        setCounterCAA(math.MaxInt64),
 			ExpectedSessionCAA: math.MaxInt64 - 1,
 		},
 	}
 
 	for _, test := range tests {
-		sessionCAA, caa := test.CAA.Issue()
+		t.Run(fmt.Sprintf("%+v", test), func(t *testing.T) {
+			sessionCAA := test.CAA.Issue()
 
-		assert.Equal(t, test.ExpectedSessionCAA, sessionCAA)
-		assert.Equal(t, test.ExpectedCAA, caa)
+			assert.Equal(t, test.ExpectedSessionCAA, sessionCAA)
+			assert.Equal(t, test.ExpectedCAA, test.CAA)
+		})
 	}
 }
 
-func Test_Issue_ReturnsValidSessionCAAAndIncrementedCAAWhenIsLocked(t *testing.T) {
+func Test_Issue_ReturnsNextSessionCAAValueAndIncrementedCAAWhenIsLocked(t *testing.T) {
 	tests := []struct {
-		CAA                CounterCAA
-		ExpectedCAA        CounterCAA
-		ExpectedSessionCAA int64
+		CAA                *CounterCAA
+		ExpectedCAA        *CounterCAA
+		ExpectedSessionCAA SessionCAA
 	}{
 		{
-			CAA:                CounterCAA(-1),
-			ExpectedCAA:        CounterCAA(-2),
+			CAA:                setCounterCAA(-1),
+			ExpectedCAA:        setCounterCAA(-2),
 			ExpectedSessionCAA: 1,
 		},
 		{
-			CAA:                CounterCAA(-2),
-			ExpectedCAA:        CounterCAA(-3),
+			CAA:                setCounterCAA(-2),
+			ExpectedCAA:        setCounterCAA(-3),
 			ExpectedSessionCAA: 2,
 		},
 		{
-			CAA:                CounterCAA(-math.MaxInt64 + 1),
-			ExpectedCAA:        CounterCAA(-math.MaxInt64),
+			CAA:                setCounterCAA(-math.MaxInt64 + 1),
+			ExpectedCAA:        setCounterCAA(-math.MaxInt64),
 			ExpectedSessionCAA: math.MaxInt64 - 1,
 		},
 	}
 	for _, test := range tests {
-		sessionCAA, caa := test.CAA.Issue()
+		t.Run(fmt.Sprintf("%+v", test), func(t *testing.T) {
+			sessionCAA := test.CAA.Issue()
 
-		assert.Equal(t, test.ExpectedSessionCAA, sessionCAA)
-		assert.Equal(t, test.ExpectedCAA, caa)
+			assert.Equal(t, test.ExpectedSessionCAA, sessionCAA)
+			assert.Equal(t, test.ExpectedCAA, test.CAA)
+		})
 	}
 }
 
-func Test_Revoke_ReturnsUnmodifiedCAAWhenItHasNeverIssued(t *testing.T) {
-	assert.Equal(t, CounterCAA(0), CounterCAA(0).Revoke(10))
+func Test_Revoke_HasNoEffectOnUnissuedCAA(t *testing.T) {
+	caa := NewCounter()
+	caa.Revoke(10)
+
+	assert.Equal(t, NewCounter(), caa)
 }
 
-func Test_Revoke_ReturnsCAAWithRevocationsWhenLocked(t *testing.T) {
+func Test_Revoke_IncrementsCAAWithRevocationsWhenLocked(t *testing.T) {
 	tests := []struct {
-		CAA         CounterCAA
+		CAA         *CounterCAA
+		ExpectedCAA *CounterCAA
 		RevokeN     int64
-		ExpectedCAA CounterCAA
 	}{
 		{
-			CAA:         CounterCAA(-1),
+			CAA:         setCounterCAA(-1),
+			ExpectedCAA: setCounterCAA(-2),
 			RevokeN:     1,
-			ExpectedCAA: CounterCAA(-2),
 		},
 		{
-			CAA:         CounterCAA(-4),
+			CAA:         setCounterCAA(-4),
+			ExpectedCAA: setCounterCAA(-14),
 			RevokeN:     10,
-			ExpectedCAA: CounterCAA(-14),
 		},
 		{
-			CAA:         CounterCAA(-math.MaxInt64 + 1),
+			CAA:         setCounterCAA(-math.MaxInt64 + 1),
+			ExpectedCAA: setCounterCAA(-math.MaxInt64),
 			RevokeN:     1,
-			ExpectedCAA: CounterCAA(-math.MaxInt64),
 		},
 	}
 
 	for _, test := range tests {
-		assert.Equal(t, test.ExpectedCAA, test.CAA.Revoke(test.RevokeN))
+		t.Run(fmt.Sprintf("%+v", test), func(t *testing.T) {
+			test.CAA.Revoke(test.RevokeN)
+
+			assert.Equal(t, test.ExpectedCAA, test.CAA)
+		})
 	}
 }
 
 func Test_Revoke_ReturnsCAAWithRevocations(t *testing.T) {
 	tests := []struct {
-		CAA         CounterCAA
+		CAA         *CounterCAA
+		ExpectedCAA *CounterCAA
 		RevokeN     int64
-		ExpectedCAA CounterCAA
 	}{
 		{
-			CAA:         CounterCAA(1),
+			CAA:         setCounterCAA(1),
+			ExpectedCAA: setCounterCAA(2),
 			RevokeN:     1,
-			ExpectedCAA: CounterCAA(2),
 		},
 		{
-			CAA:         CounterCAA(4),
+			CAA:         setCounterCAA(4),
+			ExpectedCAA: setCounterCAA(14),
 			RevokeN:     10,
-			ExpectedCAA: CounterCAA(14),
 		},
 		{
-			CAA:         CounterCAA(math.MaxInt64 - 1),
+			CAA:         setCounterCAA(math.MaxInt64 - 1),
+			ExpectedCAA: setCounterCAA(math.MaxInt64),
 			RevokeN:     1,
-			ExpectedCAA: CounterCAA(math.MaxInt64),
 		},
 	}
 
 	for _, test := range tests {
-		assert.Equal(t, test.ExpectedCAA, test.CAA.Revoke(test.RevokeN))
+		t.Run(fmt.Sprintf("%+v", test), func(t *testing.T) {
+			test.CAA.Revoke(test.RevokeN)
+
+			assert.Equal(t, test.ExpectedCAA, test.CAA)
+		})
 	}
 }

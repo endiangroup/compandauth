@@ -13,18 +13,18 @@ package compandauth
 // sessions) with no need to have access to them.
 type CounterCAA int64
 
-func NewCounter() CounterCAA {
-	return CounterCAA(0)
+func NewCounter() *CounterCAA {
+	return new(CounterCAA)
 }
 
 // Locks CAA to prevent validation of session CAA's.
-func (caa CounterCAA) Lock() CAA {
-	return -caa.abs()
+func (caa *CounterCAA) Lock() {
+	*caa = -caa.abs()
 }
 
 // Unlocks CAA to allow validation of session CAA's.
-func (caa CounterCAA) Unlock() CAA {
-	return caa.abs()
+func (caa *CounterCAA) Unlock() {
+	*caa = caa.abs()
 }
 
 func (caa CounterCAA) IsLocked() bool {
@@ -34,39 +34,35 @@ func (caa CounterCAA) IsLocked() bool {
 // Indicates if an incoming session CAA is considered valid. incomingCAA should
 // be the CAA value retrieved from a distributed session. delta represents
 // number of active distributed sessions you would like to maintain per CAA.
-func (caa CounterCAA) IsValid(incomingCAA int64, delta int64) bool {
-	incomingCAA = abs(incomingCAA)
+func (caa CounterCAA) IsValid(s SessionCAA, delta int64) bool {
+	sessionCAA := abs(int64(s))
 	delta = abs(delta)
 
-	return !caa.IsLocked() && caa.HasIssued() && (incomingCAA+delta) >= int64(caa)
+	return !caa.IsLocked() &&
+		caa.HasIssued() &&
+		(sessionCAA+delta) >= int64(caa)
 }
 
 // Invalidates the oldest n sessions. Set n to delta to invalidate all active
 // sessions. If the CAA has never issued it has no effect. If the CAA has been
 // locked it will still perform the revocations which will come into effect
 // when the CAA is unlocked.
-func (caa CounterCAA) Revoke(n int64) CAA {
+func (caa *CounterCAA) Revoke(n int64) {
 	if !caa.HasIssued() {
-		return caa
+		return
 	}
 
-	if caa.IsLocked() {
-		return caa - CounterCAA(n)
-	}
-
-	return caa + CounterCAA(n)
+	caa.step(n)
 }
 
 // Issues the next CAA value to use in a distributed session and the
 // incremented CAA. If locked it will return the next valid session CAA value
 // and progress the CAA with out unlocking it (the session will be considered
 // invalid whilst the CAA remains locked).
-func (caa CounterCAA) Issue() (int64, CAA) {
-	if caa.IsLocked() {
-		return int64(caa.abs()), caa - CounterCAA(1)
-	}
+func (caa *CounterCAA) Issue() SessionCAA {
+	defer caa.step(1)
 
-	return int64(caa), caa + CounterCAA(1)
+	return SessionCAA(caa.abs())
 }
 
 // Indicates if the CAA has issued at least once, regardless if it has been
@@ -79,4 +75,19 @@ func (caa CounterCAA) abs() CounterCAA {
 	return CounterCAA(abs(int64(caa)))
 }
 
-var _ = CAA(CounterCAA(0))
+func (caa *CounterCAA) step(n int64) {
+	if caa.IsLocked() {
+		caa.decrement(n)
+	} else {
+		caa.increment(n)
+	}
+}
+
+func (caa *CounterCAA) increment(n int64) {
+	*caa += CounterCAA(n)
+}
+func (caa *CounterCAA) decrement(n int64) {
+	*caa -= CounterCAA(n)
+}
+
+var _ = CAA(NewCounter())
