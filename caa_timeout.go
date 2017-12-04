@@ -3,7 +3,7 @@ package compandauth
 import (
 	"time"
 
-	"github.com/adrianduke/compandauth/clock"
+	"github.com/endiangroup/compandauth/clock"
 )
 
 type CAATimeout int64

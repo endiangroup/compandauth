@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/adrianduke/compandauth/clock"
+	"github.com/endiangroup/compandauth/clock"
 	"github.com/stretchr/testify/assert"
 )
 
