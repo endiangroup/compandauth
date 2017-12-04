@@ -3,14 +3,21 @@ package compandauth_test
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/adrianduke/compandauth"
+	"github.com/adrianduke/compandauth/clock"
 	"github.com/stretchr/testify/assert"
 )
 
-type Entity struct {
+type CounterEntity struct {
 	Delta int64
 	CAA   compandauth.CAA
+}
+
+type TimeoutEntity struct {
+	Timeout time.Duration
+	CAA     compandauth.CAA
 }
 
 type Session struct {
@@ -20,6 +27,13 @@ type Session struct {
 func setCounterCAA(i int64) *compandauth.CounterCAA {
 	caa := compandauth.NewCounter()
 	*caa = compandauth.CounterCAA(i)
+
+	return caa
+}
+
+func setTimeoutCAA(i int64) *compandauth.TimeoutCAA {
+	caa := compandauth.NewTimeout()
+	*caa = compandauth.TimeoutCAA(i)
 
 	return caa
 }
@@ -42,10 +56,36 @@ func Test_Counter_ItConsidersUnissuedCAAsAsAlwaysInvalid(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%+v", test), func(t *testing.T) {
-			entity := Entity{Delta: test.Delta, CAA: compandauth.NewCounter()}
+			entity := CounterEntity{Delta: test.Delta, CAA: compandauth.NewCounter()}
 			session := Session{CAA: test.SessionCAA}
 
 			assert.False(t, entity.CAA.IsValid(session.CAA, entity.Delta))
+		})
+	}
+}
+
+func Test_Timeout_ItConsidersUnissuedCAAsAsAlwaysInvalid(t *testing.T) {
+	tests := []struct {
+		Timeout    time.Duration
+		SessionCAA compandauth.SessionCAA
+	}{
+		{Timeout: -1, SessionCAA: -1},
+		{Timeout: -1, SessionCAA: 0},
+		{Timeout: -1, SessionCAA: 1},
+		{Timeout: 0, SessionCAA: -1},
+		{Timeout: 0, SessionCAA: 0},
+		{Timeout: 0, SessionCAA: 1},
+		{Timeout: 1, SessionCAA: -1},
+		{Timeout: 1, SessionCAA: 0},
+		{Timeout: 1, SessionCAA: 1},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%+v", test), func(t *testing.T) {
+			entity := TimeoutEntity{Timeout: test.Timeout, CAA: compandauth.NewTimeout()}
+			session := Session{CAA: test.SessionCAA}
+
+			assert.False(t, entity.CAA.IsValid(session.CAA, compandauth.ToSeconds(entity.Timeout)))
 		})
 	}
 }
@@ -79,11 +119,49 @@ func Test_Counter_ItConsidersLockedCAAAsAlwaysInvalid(t *testing.T) {
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%+v", test), func(t *testing.T) {
 			session := Session{CAA: test.SessionCAA}
-			entity := Entity{Delta: test.Delta, CAA: setCounterCAA(test.CAA)}
+			entity := CounterEntity{Delta: test.Delta, CAA: setCounterCAA(test.CAA)}
 
 			entity.CAA.Lock()
 
 			assert.False(t, entity.CAA.IsValid(session.CAA, entity.Delta))
+		})
+	}
+}
+
+func Test_Timeout_ItConsidersLockedCAAAsAlwaysInvalid(t *testing.T) {
+	tests := []struct {
+		CAA        int64
+		Timeout    time.Duration
+		SessionCAA compandauth.SessionCAA
+	}{
+		{CAA: -1, Timeout: -1, SessionCAA: -1},
+		{CAA: -1, Timeout: -1, SessionCAA: 0},
+		{CAA: -1, Timeout: -1, SessionCAA: 1},
+		{CAA: -1, Timeout: 0, SessionCAA: -1},
+		{CAA: -1, Timeout: 0, SessionCAA: 0},
+		{CAA: -1, Timeout: 0, SessionCAA: 1},
+		{CAA: -1, Timeout: 1, SessionCAA: -1},
+		{CAA: -1, Timeout: 1, SessionCAA: 0},
+		{CAA: -1, Timeout: 1, SessionCAA: 1},
+		{CAA: 1, Timeout: -1, SessionCAA: -1},
+		{CAA: 1, Timeout: -1, SessionCAA: 0},
+		{CAA: 1, Timeout: -1, SessionCAA: 1},
+		{CAA: 1, Timeout: 0, SessionCAA: -1},
+		{CAA: 1, Timeout: 0, SessionCAA: 0},
+		{CAA: 1, Timeout: 0, SessionCAA: 1},
+		{CAA: 1, Timeout: 1, SessionCAA: -1},
+		{CAA: 1, Timeout: 1, SessionCAA: 0},
+		{CAA: 1, Timeout: 1, SessionCAA: 1},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%+v", test), func(t *testing.T) {
+			session := Session{CAA: test.SessionCAA}
+			entity := TimeoutEntity{Timeout: test.Timeout, CAA: setTimeoutCAA(test.CAA)}
+
+			entity.CAA.Lock()
+
+			assert.False(t, entity.CAA.IsValid(session.CAA, compandauth.ToSeconds(entity.Timeout)))
 		})
 	}
 }
@@ -101,7 +179,7 @@ func Test_Counter_OnlyTheLastDeltaSessionsAreConsideredValid(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%+v", test), func(t *testing.T) {
-			entity := Entity{Delta: test.Delta, CAA: compandauth.NewCounter()}
+			entity := CounterEntity{Delta: test.Delta, CAA: compandauth.NewCounter()}
 			sessions := []Session{}
 
 			for i := 0; i < test.N; i++ {
@@ -120,6 +198,71 @@ func Test_Counter_OnlyTheLastDeltaSessionsAreConsideredValid(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_Timeout_SessionsAreOnlyValidForTimeoutDuration(t *testing.T) {
+	start := time.Now()
+	clock.NowForce(start)
+	defer clock.NowReset()
+
+	entity := TimeoutEntity{Timeout: 30 * time.Second, CAA: compandauth.NewTimeout()}
+	sessions := []Session{}
+
+	end := start.Unix() + compandauth.ToSeconds(2*time.Minute)
+	for ; clock.Now().Unix() < end; clock.NowForce(clock.Now().Add(1 * time.Second)) {
+		newSession := Session{}
+		newSession.CAA = entity.CAA.Issue()
+
+		sessions = append(sessions, newSession)
+
+		for _, session := range sessions {
+			if clock.Now().Unix()-int64(session.CAA) > compandauth.ToSeconds(entity.Timeout) {
+				assert.False(t, entity.CAA.IsValid(session.CAA, compandauth.ToSeconds(entity.Timeout)))
+			} else {
+				assert.True(t, entity.CAA.IsValid(session.CAA, compandauth.ToSeconds(entity.Timeout)))
+			}
+		}
+	}
+}
+
+func Test_Timeout_RevokesAllSessionsBeforeTimestamp(t *testing.T) {
+	start := time.Now()
+	clock.NowForce(start)
+	defer clock.NowReset()
+
+	tests := []struct {
+		Timeout          time.Duration
+		NumberOfSessions int64
+		RevokeAt         int64
+	}{
+		{Timeout: 30 * time.Second, NumberOfSessions: 100, RevokeAt: start.Unix() + 50},
+	}
+
+	for _, test := range tests {
+		entity := TimeoutEntity{Timeout: 30 * time.Second, CAA: compandauth.NewTimeout()}
+		sessions := []Session{}
+
+		end := start.Unix() + compandauth.ToSeconds(2*time.Minute)
+		for ; clock.Now().Unix() < end; clock.NowForce(clock.Now().Add(1 * time.Second)) {
+			newSession := Session{}
+			newSession.CAA = entity.CAA.Issue()
+
+			sessions = append(sessions, newSession)
+		}
+
+		entity.CAA.Revoke(test.RevokeAt)
+
+		for _, session := range sessions {
+			if clock.Now().Unix()-int64(session.CAA) > compandauth.ToSeconds(entity.Timeout) {
+				assert.False(t, entity.CAA.IsValid(session.CAA, compandauth.ToSeconds(entity.Timeout)))
+			} else {
+				assert.True(t, entity.CAA.IsValid(session.CAA, compandauth.ToSeconds(entity.Timeout)))
+			}
+		}
+
+		clock.NowForce(start)
+	}
+
 }
 
 func Test_Counter_ItRevokesTheLastNSessions(t *testing.T) {
@@ -154,7 +297,7 @@ func Test_Counter_ItRevokesTheLastNSessions(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%+v", test), func(t *testing.T) {
-			entity := Entity{Delta: test.Delta, CAA: compandauth.NewCounter()}
+			entity := CounterEntity{Delta: test.Delta, CAA: compandauth.NewCounter()}
 			sessions := []Session{}
 
 			for i := int64(0); i < test.NumberOfSessions; i++ {
