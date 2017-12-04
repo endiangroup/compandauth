@@ -24,9 +24,9 @@ type Session struct {
 	CAA compandauth.SessionCAA
 }
 
-func setCounterCAA(i int64) *compandauth.CounterCAA {
+func setCounterCAA(i int64) *compandauth.CAACounter {
 	caa := compandauth.NewCounter()
-	*caa = compandauth.CounterCAA(i)
+	*caa = compandauth.CAACounter(i)
 
 	return caa
 }
