@@ -40,7 +40,7 @@ func (caa CounterCAA) IsValid(s SessionCAA, delta int64) bool {
 
 	return !caa.IsLocked() &&
 		caa.HasIssued() &&
-		(sessionCAA+delta) >= int64(caa)
+		(sessionCAA+delta) >= int64(caa.abs())
 }
 
 // Invalidates the oldest n sessions. Set n to delta to invalidate all active

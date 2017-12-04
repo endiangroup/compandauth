@@ -26,13 +26,13 @@ func (caa TimeoutCAA) IsLocked() bool {
 	return caa < 0
 }
 
-// Indicates if an session session CAA is considered valid. sessionCAA should
-// be the CAA value retrieved from a session token (e.g. JWT). durationSecs represents
+// Indicates if an session CAA is considered valid. s should be the CAA value
+// retrieved from a session token (e.g. JWT). durationSecs represents
 // number of seconds you would like to consider a session valid for.
 func (caa TimeoutCAA) IsValid(s SessionCAA, durationSecs int64) bool {
 	sessionTimestamp := abs(int64(s))
 	durationSecs = abs(durationSecs)
-	expiryTimestamp := int64(caa)
+	expiryTimestamp := int64(caa.abs())
 
 	return !caa.IsLocked() &&
 		caa.HasIssued() &&
