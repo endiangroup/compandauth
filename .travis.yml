@@ -1,18 +1,17 @@
 language: go
-
+sudo: false
 go:
   - 1.7
   - 1.8
   - 1.9
   - master
 
-# before_install:
-#   - go get github.com/axw/gocov/gocov
-#   - go get github.com/mattn/goveralls
-#   - if ! go get code.google.com/p/go.tools/cmd/cover; then go get golang.org/x/tools/cmd/cover; fi
+before_install:
+  - go get github.com/mattn/goveralls
+  - go get golang.org/x/tools/cmd/cover
 
 install:
   - go get -t -v ./...
 
-# script:
-#   - $HOME/gopath/bin/goveralls -service=travis-ci
+script:
+  - $GOPATH/bin/goveralls -service=travis-ci
