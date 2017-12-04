@@ -1,5 +1,7 @@
 # CAA: Compare-and-Authenticate
 
+[![Build Status](https://travis-ci.org/endiangroup/compandauth.svg?branch=master)](https://travis-ci.org/endiangroup/compandauth) [![Coverage Status](https://coveralls.io/repos/endiangroup/compandauth/badge.svg?branch=master&service=github)](https://coveralls.io/github/endiangroup/compandauth?branch=master) [![GoDoc](https://godoc.org/github.com/endiangroup/compandauth?status.svg)](https://godoc.org/github.com/endiangroup/compandauth)
+
 A single counter used to maintain the validity of a set number of distributed sessions. Inspired by CAS counters.
 
 ### Features:
