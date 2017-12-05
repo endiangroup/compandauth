@@ -2,41 +2,64 @@
 
 [![Build Status](https://travis-ci.org/endiangroup/compandauth.svg?branch=master)](https://travis-ci.org/endiangroup/compandauth) [![Coverage Status](https://coveralls.io/repos/github/endiangroup/compandauth/badge.svg?branch=master)](https://coveralls.io/github/endiangroup/compandauth?branch=master) [![GoDoc](https://godoc.org/github.com/endiangroup/compandauth?status.svg)](https://godoc.org/github.com/endiangroup/compandauth)
 
-A single counter used to maintain the validity of a set number of distributed sessions. Inspired by CAS counters.
+A single counter used to maintain the validity of a set number of distributed sessions. Inspired by CAS.
 
 ### Features:
 
-- Central revocation, locking and unlocking of distributed sessions
-- Tiny, single int64 to be stored along with the entity you wish to protect and single int64 to store inside distributed session
-- Can maintain a number of concurrent active sessions (lets say you want to allow a user to be able to login from 5 different browsers, or 1)
-- Can dynamically change the number of concurrent sessions with no need to update the distributed session
-- Can be shoe horned into an existing system easily, JWT's that don't contain a 'CAA' value can be considered to have a 'CAA' of '0' which is the first valid issued number
-- Long lived sessions, such as for mobile apps
-- Naturally acts as a 'number of logins' counter
-- Doubles as a nonce, as every issued session will have a unique CAA value
+- *Central revocation, locking and unlocking* of distributed sessions
+- Tiny, *single int64 to be stored along with the entity* you wish to protect and *single int64 to store inside existing distributed session* (such as JWT or Cookie)
+- [**CAACounter**] Can *maintain a number of concurrent active sessions* (lets say you want to allow a user to be able to login from 5 different browsers, or 1)
+- [**CAACounter**] Can *dynamically change the number of concurrent sessions* server side with no need to update the distributed session
+- [**CAACounter**] Can be *shoe horned into an existing system easily*, JWT's that don't contain a 'SessionCAA' value can be considered to have a 'SessionCAA' of '0' which is the first valid issued number
+- [**CAACounter**] *Long lived sessions*, such as for mobile apps
+- [**CAATimeout**] Can *manage the validity of a session based on some duration*
+- [**CAATimeout**] Can *dynamically adjust the validity duration* server side
+- [**CAATimeout**] Can *revoke all sessions before some timestamp* regardless if they are still within the valid duration or not
 
 **What it doesn't do:**
 
-- Lock or unlock sessions individually (you would need a CAA per thing you'd want to manage e.g. laptop sessions, mobile sessions... etc)
-- Revoke sessions individually (again would need individual CAA's)
-- Audit trails
-- Time limited sessions
+- Lock or unlock sessions individually
+- Revoke sessions individually
+- Audit trail
 
-### CAA Pre-requisites:
+### What problems does this package solve?
 
-- A column or property is added to the entity being protected (e.g. a user), of equivalent type BIGINT, defaulted to 0
-- The `CAA` type is added to the user entity object in code
-- A `CAA` claim is added to the session object (e.g. JWT) in code, of type int64 (don't use the CAA type provided by this package!)
+> Your building a service that allows some entity to authenticate against, however you want to limit the number of concurrent sessions it can maintain and centrally manage validity of issued tokens.
 
-### CAA Usage:
+Vanilla JWT or Cookies (that is without a bulky server side session management system) don't have a mechanism for limiting the number of concurrent sessions a single entity may have. For example with a JWT or Cookie you can't say a single entity such as a user can only have 2 active sessions open at any time.
 
-JWT **Login**:
+Additionally Cookies and JWT's cannot revoke access for already issued tokens. You can't for instance temporarily lock out all sessions for a given entity or revoke already issued sessions. For example a user wants to invalidate all their active sessions across devices, or internally you want to lock a users account temporarily whilst you investigate something.
 
-1. Whilst preparing a JWT for a successfully authenticated user, store the current user CAA value in the session CAA claim
-2. Increment the user CAA value by 1
-3. Update user record and issue JWT
+**Possible solution:**
 
-Example code, `Issue()` returns both the incremented CAA and current CAA value:
+With the `CAACounter` you can do both of these things server side without having to touch already issued sessions. You add a `SessionCAA` to the existing struct you issue to your authenticating entites and a `CAA` implementation to the entity you want to protect.
+
+---
+> Your building a service that allows some entity to escalate its privileges, however you want it to do so only for some period of time, additionally you may want to increase that period of time during its lifetime
+
+Both Cookies and JWT's support expiration times, however you can't increase an issued tokens expiration time without trading the token with the device that holds it (e.g. wait until the user makes a request to the server so you can trade the token with a new one with an increased expiration timestamp). For example when your user edits their settings you have them re-authenticate to escalate their privileges for a limited period of time, whilst the session is being used you keep the session alive until some fixed deadline.
+
+**Possible solution:**
+
+With the `CAATimeout` you can do all of these things with a combination of adjusting the `IsValid` duration and using the `Revoke` to set a hard deadline. You add a `SessionCAA` to the existing struct you issue to your authenticating entites and a `CAA` implementation to the entity you want to protect.
+
+### Status
+
+**CAACounter** - A previous incarnation has been used successfully in production with 15,000+ users since December 2016.
+**CAATimeout** - Has not been used in a production environment that we are aware of yet.
+
+### Usage:
+
+- The `CAA` type is added to the entity being protected (e.g. user)
+- A `SessionCAA` property is added to the session object (e.g. JWT)
+- When validating the session object, fetch the entity in question and check the validity of the incoming `SessionCAA` with `entity.CAA.IsValid(SessionCAA)`
+- When issuing a new session for the entity set the sessions CAA value with `session.CAA = entity.CAA.Issue()`
+- Ensure you update the entity after using `Revoke()`, `Issue()`, `Lock()` and `Unlock()` as they modify the CAA state
+
+### Examples:
+
+**JWT Login**:
+
 ``` go
 type User struct {
 	//...
@@ -45,7 +68,7 @@ type User struct {
 
 type JwtSession struct {
 	jwt.StandardClaims
-	CAA int64 `json:"caa"`
+	CAA SessionCAA `json:"caa"`
 }
 
 func Login(incomingUsername, incomingPassword string) (JwtSession, error) {
@@ -53,7 +76,7 @@ func Login(incomingUsername, incomingPassword string) (JwtSession, error) {
 	if passwordsMatch(incomingPassword, user.Password) {
 		newUserSession := JwtSession{...} // set standard claims
 
-		newUserSession.CAA, user.CAA = user.CAA.Issue()
+		newUserSession.CAA = user.CAA.Issue()
 
 		if err := user.Update(); err != nil { // update user record with new issued CAA value
 			return JwtSession{}, err
@@ -66,13 +89,7 @@ func Login(incomingUsername, incomingPassword string) (JwtSession, error) {
 }
 ```
 
-**Authentication**:
-
-1. Extract the CAA value from the incoming session
-2. Fetch the user record related to the session
-3. Compare (session CAA + maximum concurrent sessions) >= user CAA
-	1. _True_: session can be considered valid
-	2. _False_: session can be considered invalid
+**JWT CAACounter Authentication**:
 
 ```go
 type User struct {
@@ -82,8 +99,8 @@ type User struct {
 }
 
 type JwtSession struct {
-	CAA int64 `json:"caa"`
 	jwt.StandardClaims
+	CAA SessionCAA `json:"caa"`
 }
 
 func (j JwtSession) Valid() error {
@@ -96,14 +113,46 @@ func (j JwtSession) Valid() error {
 
 		return errors.New("Invalid session, please login again")
 	}
+
+	return nil
+}
+```
+
+**JWT CAATimeout Authentication**:
+
+```go
+const SudoTimeout = 5 * time.Minute
+
+type User struct {
+	//...
+	SudoCAA compandauth.CAA
+}
+
+type SudoSession struct {
+	JwtSession
+	SudoCAA SessionCAA `json:"sudo_caa"`
+}
+
+func (s SudoSession) Valid() error {
+	if err := s.JwtSession.Valid(); err != nil {
+		return err
+	}
+
+	//... fetch the User from the session ...
+	if !user.SudoCAA.IsValid(s.SudoCAA, compandauth.ToSeconds(SudoTimeout)) {
+
+		if user.SudoCAA.IsLocked() {
+			return errors.New("It appears your locked out of sudo mode")
+		}
+
+		return errors.New("Invalid session, please login again")
+	}
+
+	return nil
 }
 ```
 
 **Locking**:
-
-1. Fetch the user record for which you want to lock
-2. Flip the signed bit on the user CAA (turn the positive integer into a negative one)
-3. Update the user record
 
 ```go
 type User struct {
@@ -112,15 +161,11 @@ type User struct {
 }
 
 func (u *User) Lock() {
-	u.CAA = u.CAA.Lock()
+	u.CAA.Lock()
 }
 ```
 
-**Revocation**:
-
-1. Fetch the user record for which you want to force logout
-2. Increment the user CAA by the maximum number of concurrent sessions they can have
-3. Update the user record
+**CAACounter Revocation**:
 
 ```go
 type User struct {
@@ -130,14 +175,24 @@ type User struct {
 }
 
 func (u *User) LogoutAllSessions() {
-	u.CAA = u.CAA.Revoke(u.MaxActiveSessions)
+	u.CAA.Revoke(u.MaxActiveSessions)
+}
+```
+
+**CAATimeout Revocation**:
+
+```go
+type User struct {
+	//...
+	CAA compandauth.CAA
+}
+
+func (u *User) LogoutAllSessions() {
+	u.CAA.Revoke(time.Now().Unix())
 }
 ```
 
 **Has Ever Logged In**
-
-1. Fetch the user record for which you want to check
-2. Check if CAA is not 0
 
 ```go
 type User struct {
@@ -149,11 +204,3 @@ func (u *User) HasLoggedIn() bool {
 	return u.CAA.HasIssued()
 }
 ```
-
-### Advanced Scenarios:
-
-**Blessed session**
-
-Typical usecase would be to have a user re-login to access their account settings, like GitHub or LinkedIn.
-
-Add an additional CAA to your entity (e.g. `BlessedCAA compandauth.CAA`) separate to your regular login CAA. In the handler that deals with promoting privileges, have it issue your BlessedCAA with a background job to `Revoke` after some period of time.
