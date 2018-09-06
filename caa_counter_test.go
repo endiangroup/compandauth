@@ -8,16 +8,16 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func setCounterCAA(i int64) *CAACounter {
+func setCounterCAA(i int64) *Counter {
 	caa := NewCounter()
-	*caa = CAACounter(i)
+	*caa = Counter(i)
 
 	return caa
 }
 
 func Test_IsLocked_ReturnsTrueWhenCounterCAAIsNegative(t *testing.T) {
 	tests := []struct {
-		CAA *CAACounter
+		CAA *Counter
 	}{
 		{CAA: setCounterCAA(-1)},
 		{CAA: setCounterCAA(-5)},
@@ -33,7 +33,7 @@ func Test_IsLocked_ReturnsTrueWhenCounterCAAIsNegative(t *testing.T) {
 
 func Test_IsLocked_ReturnsFalseWhenCounterCAAIsPostive(t *testing.T) {
 	tests := []struct {
-		CAA *CAACounter
+		CAA *Counter
 	}{
 		{CAA: setCounterCAA(1)},
 		{CAA: setCounterCAA(5)},
@@ -49,7 +49,7 @@ func Test_IsLocked_ReturnsFalseWhenCounterCAAIsPostive(t *testing.T) {
 
 func Test_Lock_IsIdempotentForCounterCAA(t *testing.T) {
 	tests := []struct {
-		CAA *CAACounter
+		CAA *Counter
 	}{
 		{CAA: setCounterCAA(-1)},
 		{CAA: setCounterCAA(-5)},
@@ -67,8 +67,8 @@ func Test_Lock_IsIdempotentForCounterCAA(t *testing.T) {
 
 func Test_Lock_SetsNegativeCounterCAAValue(t *testing.T) {
 	tests := []struct {
-		CAA         *CAACounter
-		ExpectedCAA *CAACounter
+		CAA         *Counter
+		ExpectedCAA *Counter
 	}{
 		{
 			CAA:         setCounterCAA(0),
@@ -93,7 +93,7 @@ func Test_Lock_SetsNegativeCounterCAAValue(t *testing.T) {
 
 func Test_Unlock_IsIdempotentForCounterCAA(t *testing.T) {
 	tests := []struct {
-		CAA *CAACounter
+		CAA *Counter
 	}{
 		{CAA: setCounterCAA(1)},
 		{CAA: setCounterCAA(5)},
@@ -111,7 +111,7 @@ func Test_Unlock_IsIdempotentForCounterCAA(t *testing.T) {
 
 func Test_IsValid_ReturnsFalseIfCounterCAAIsLocked(t *testing.T) {
 	tests := []struct {
-		CAA        *CAACounter
+		CAA        *Counter
 		SessionCAA SessionCAA
 		Delta      int64
 	}{
@@ -144,8 +144,8 @@ func Test_IsValid_ReturnsTrueIfSessionCAAPlusDeltaIsGreaterThanOrEqualToCounterC
 
 func Test_Issue_ReturnsNextSessionCAAValueAndIncrementsCounterCAA(t *testing.T) {
 	tests := []struct {
-		CAA                *CAACounter
-		ExpectedCAA        *CAACounter
+		CAA                *Counter
+		ExpectedCAA        *Counter
 		ExpectedSessionCAA SessionCAA
 	}{
 		{
@@ -177,8 +177,8 @@ func Test_Issue_ReturnsNextSessionCAAValueAndIncrementsCounterCAA(t *testing.T) 
 
 func Test_Issue_ReturnsNextSessionCAAValueAndIncrementedCounterCAAWhenIsLocked(t *testing.T) {
 	tests := []struct {
-		CAA                *CAACounter
-		ExpectedCAA        *CAACounter
+		CAA                *Counter
+		ExpectedCAA        *Counter
 		ExpectedSessionCAA SessionCAA
 	}{
 		{
@@ -216,8 +216,8 @@ func Test_Revoke_HasNoEffectOnUnissuedCounterCAA(t *testing.T) {
 
 func Test_Revoke_IncrementsCounterCAAWithRevocationsWhenLocked(t *testing.T) {
 	tests := []struct {
-		CAA         *CAACounter
-		ExpectedCAA *CAACounter
+		CAA         *Counter
+		ExpectedCAA *Counter
 		RevokeN     int64
 	}{
 		{
@@ -248,8 +248,8 @@ func Test_Revoke_IncrementsCounterCAAWithRevocationsWhenLocked(t *testing.T) {
 
 func Test_Revoke_ReturnsCounterCAAWithRevocations(t *testing.T) {
 	tests := []struct {
-		CAA         *CAACounter
-		ExpectedCAA *CAACounter
+		CAA         *Counter
+		ExpectedCAA *Counter
 		RevokeN     int64
 	}{
 		{

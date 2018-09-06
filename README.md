@@ -8,10 +8,10 @@ A single counter used to maintain the validity of a set number of distributed se
 
 - *Central revocation, locking and unlocking* of distributed sessions
 - Tiny, *single int64 to be stored along with the entity* you wish to protect and *single int64 to store inside existing distributed session* (such as JWT or Cookie)
-- [**CAACounter**] Can *maintain a number of concurrent active sessions* (lets say you want to allow a user to be able to login from 5 different browsers, or 1)
-- [**CAACounter**] Can *dynamically change the number of concurrent sessions* server side with no need to update the distributed session
-- [**CAACounter**] Can be *shoe horned into an existing system easily*, JWT's that don't contain a 'SessionCAA' value can be considered to have a 'SessionCAA' of '0' which is the first valid issued number
-- [**CAACounter**] *Long lived sessions*, such as for mobile apps
+- [**Counter**] Can *maintain a number of concurrent active sessions* (lets say you want to allow a user to be able to login from 5 different browsers, or 1)
+- [**Counter**] Can *dynamically change the number of concurrent sessions* server side with no need to update the distributed session
+- [**Counter**] Can be *shoe horned into an existing system easily*, JWT's that don't contain a 'SessionCAA' value can be considered to have a 'SessionCAA' of '0' which is the first valid issued number
+- [**Counter**] *Long lived sessions*, such as for mobile apps
 - [**CAATimeout**] Can *manage the validity of a session based on some duration*
 - [**CAATimeout**] Can *dynamically adjust the validity duration* server side
 - [**CAATimeout**] Can *revoke all sessions before some timestamp* regardless if they are still within the valid duration or not
@@ -32,7 +32,7 @@ Additionally Cookies and JWT's cannot revoke access for already issued tokens. Y
 
 **Possible solution:**
 
-With the `CAACounter` you can do both of these things server side without having to touch already issued sessions. You add a `SessionCAA` to the existing struct you issue to your authenticating entites and a `CAA` implementation to the entity you want to protect.
+With the `Counter` you can do both of these things server side without having to touch already issued sessions. You add a `SessionCAA` to the existing struct you issue to your authenticating entites and a `CAA` implementation to the entity you want to protect.
 
 ---
 > Your building a service that allows some entity to escalate its privileges, however you want it to do so only for some period of time, additionally you may want to increase that period of time during its lifetime
@@ -45,7 +45,7 @@ With the `CAATimeout` you can do all of these things with a combination of adjus
 
 ### Status
 
-**CAACounter** - A previous incarnation has been used successfully in production with 15,000+ users since December 2016.
+**Counter** - A previous incarnation has been used successfully in production with 15,000+ users since December 2016.
 **CAATimeout** - Has not been used in a production environment that we are aware of yet.
 
 ### Usage:
@@ -89,7 +89,7 @@ func Login(incomingUsername, incomingPassword string) (JwtSession, error) {
 }
 ```
 
-**JWT CAACounter Authentication**:
+**JWT Counter Authentication**:
 
 ```go
 type User struct {
@@ -165,7 +165,7 @@ func (u *User) Lock() {
 }
 ```
 
-**CAACounter Revocation**:
+**Counter Revocation**:
 
 ```go
 type User struct {
