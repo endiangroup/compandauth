@@ -22,7 +22,7 @@ A single counter used to maintain the validity of a set number of distributed se
 	- Instead you'll lock an entity from doing what ever behaviour you have the CAA protecting, such as logging in or escalating privileges for example.
 - Revoke sessions individually
 	- [**Counter**] You can revoke the last N sessions but not a specific one
-	- [**Timeout**] You can revoke sessions in the last N seconds but not a specific one
+	- [**Timeout**] You can revoke all sessions before timestamp T
 - Audit trail
 	- No in built mechanism for tracking changes to CAA values, must be performed at a higher level
 
