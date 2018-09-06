@@ -1,0 +1,10 @@
+workspace:
+  base: /go
+  path: src/github.com/endiangroup/compandauth
+
+pipeline:
+  test:
+    image: golang:latest
+    commands:
+      - go get -t -v ./...
+      - go test -v ./...
