@@ -24,7 +24,7 @@ A single counter used to maintain the validity of a set number of distributed se
 
 ### What problems does this package solve?
 
-> Your building a service that allows some entity to authenticate against, however you want to limit the number of concurrent sessions it can maintain and centrally manage validity of issued tokens.
+> You're building a service that allows some entity to authenticate against, however you want to limit the number of concurrent sessions it can maintain and centrally manage validity of issued tokens.
 
 Vanilla JWT or Cookies (that is without a bulky server side session management system) don't have a mechanism for limiting the number of concurrent sessions a single entity may have. For example with a JWT or Cookie you can't say a single entity such as a user can only have 2 active sessions open at any time.
 
@@ -35,7 +35,7 @@ Additionally Cookies and JWT's cannot revoke access for already issued tokens. Y
 With the `Counter` you can do both of these things server side without having to touch already issued sessions. You add a `SessionCAA` to the existing struct you issue to your authenticating entites and a `CAA` implementation to the entity you want to protect.
 
 ---
-> Your building a service that allows some entity to escalate its privileges, however you want it to do so only for some period of time, additionally you may want to increase that period of time during its lifetime
+> You're building a service that allows some entity to escalate its privileges, however you want it to do so only for some period of time, additionally you may want to increase that period of time during its lifetime
 
 Both Cookies and JWT's support expiration times, however you can't increase an issued tokens expiration time without trading the token with the device that holds it (e.g. wait until the user makes a request to the server so you can trade the token with a new one with an increased expiration timestamp). For example when your user edits their settings you have them re-authenticate to escalate their privileges for a limited period of time, whilst the session is being used you keep the session alive until some fixed deadline.
 
