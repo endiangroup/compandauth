@@ -31,9 +31,9 @@ func setCounterCAA(i int64) *compandauth.Counter {
 	return caa
 }
 
-func setTimeoutCAA(i int64) *compandauth.CAATimeout {
+func setTimeoutCAA(i int64) *compandauth.Timeout {
 	caa := compandauth.NewTimeout()
-	*caa = compandauth.CAATimeout(i)
+	*caa = compandauth.Timeout(i)
 
 	return caa
 }

@@ -10,16 +10,16 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func setTimeoutCAA(i int64) *CAATimeout {
+func setTimeoutCAA(i int64) *Timeout {
 	caa := NewTimeout()
-	*caa = CAATimeout(i)
+	*caa = Timeout(i)
 
 	return caa
 }
 
 func Test_IsLocked_ReturnsTrueWhenTimeoutCAAIsNegative(t *testing.T) {
 	tests := []struct {
-		CAA *CAATimeout
+		CAA *Timeout
 	}{
 		{CAA: setTimeoutCAA(-1)},
 		{CAA: setTimeoutCAA(-5)},
@@ -35,7 +35,7 @@ func Test_IsLocked_ReturnsTrueWhenTimeoutCAAIsNegative(t *testing.T) {
 
 func Test_IsLocked_ReturnsFalseWhenTimeoutCAAIsPostive(t *testing.T) {
 	tests := []struct {
-		CAA *CAATimeout
+		CAA *Timeout
 	}{
 		{CAA: setTimeoutCAA(1)},
 		{CAA: setTimeoutCAA(5)},
@@ -51,7 +51,7 @@ func Test_IsLocked_ReturnsFalseWhenTimeoutCAAIsPostive(t *testing.T) {
 
 func Test_Lock_IsIdempotentForTimeoutCAA(t *testing.T) {
 	tests := []struct {
-		CAA *CAATimeout
+		CAA *Timeout
 	}{
 		{CAA: setTimeoutCAA(-1)},
 		{CAA: setTimeoutCAA(-5)},
@@ -69,8 +69,8 @@ func Test_Lock_IsIdempotentForTimeoutCAA(t *testing.T) {
 
 func Test_Lock_SetsNegativeTimeoutCAAValue(t *testing.T) {
 	tests := []struct {
-		CAA         *CAATimeout
-		ExpectedCAA *CAATimeout
+		CAA         *Timeout
+		ExpectedCAA *Timeout
 	}{
 		{
 			CAA:         setTimeoutCAA(0),
@@ -95,7 +95,7 @@ func Test_Lock_SetsNegativeTimeoutCAAValue(t *testing.T) {
 
 func Test_Unlock_IsIdempotentForTimeoutCAA(t *testing.T) {
 	tests := []struct {
-		CAA *CAATimeout
+		CAA *Timeout
 	}{
 		{CAA: setTimeoutCAA(1)},
 		{CAA: setTimeoutCAA(5)},
@@ -113,7 +113,7 @@ func Test_Unlock_IsIdempotentForTimeoutCAA(t *testing.T) {
 
 func Test_IsValid_ReturnsFalseIfTimeoutCAAIsLocked(t *testing.T) {
 	tests := []struct {
-		CAA        *CAATimeout
+		CAA        *Timeout
 		SessionCAA SessionCAA
 		Delta      int64
 	}{
@@ -142,17 +142,17 @@ func Test_IsValid_ReturnsFalseIfTimeoutCAAHasNotIssued(t *testing.T) {
 func Test_IsValid_ReturnsFalseIfSessionCAAWasIssuedBeforeTimeoutCAA(t *testing.T) {
 	now := SessionCAA(time.Now().Unix())
 
-	assert.False(t, CAATimeout(1).IsValid(0, 1))
-	assert.False(t, CAATimeout(now).IsValid(now-1, 10))
+	assert.False(t, Timeout(1).IsValid(0, 1))
+	assert.False(t, Timeout(now).IsValid(now-1, 10))
 }
 
 func Test_IsValid_ReturnsTrueIfSessionCAAPlusDeltaIsAfterOrEqualToNow(t *testing.T) {
 	now := SessionCAA(time.Now().Unix())
 
-	assert.True(t, CAATimeout(1).IsValid(now, 0))
-	assert.True(t, CAATimeout(1).IsValid(now, 1))
-	assert.True(t, CAATimeout(1).IsValid(now-5, 10))
-	assert.True(t, CAATimeout(1).IsValid(now-10, 10))
+	assert.True(t, Timeout(1).IsValid(now, 0))
+	assert.True(t, Timeout(1).IsValid(now, 1))
+	assert.True(t, Timeout(1).IsValid(now-5, 10))
+	assert.True(t, Timeout(1).IsValid(now-10, 10))
 }
 
 func Test_Issue_SetsTimeCAAToNowOnFirstIssue(t *testing.T) {
@@ -172,8 +172,8 @@ func Test_Issue_ReturnsNowAndCurrentTimeoutCAAAfterFirstIssue(t *testing.T) {
 	defer clock.NowReset()
 
 	tests := []struct {
-		CAA                *CAATimeout
-		ExpectedCAA        *CAATimeout
+		CAA                *Timeout
+		ExpectedCAA        *Timeout
 		ExpectedSessionCAA int64
 	}{
 		{
@@ -212,8 +212,8 @@ func Test_Revoke_HasNoEffectOnUnissuedTimeoutCAA(t *testing.T) {
 
 func Test_Revoke_ReturnsNAsNegativeTimeCAAWhenLocked(t *testing.T) {
 	tests := []struct {
-		CAA         *CAATimeout
-		ExpectedCAA *CAATimeout
+		CAA         *Timeout
+		ExpectedCAA *Timeout
 		RevokeN     int64
 	}{
 		{
@@ -244,8 +244,8 @@ func Test_Revoke_ReturnsNAsNegativeTimeCAAWhenLocked(t *testing.T) {
 
 func Test_Revoke_ReturnsNAsTimeCAA(t *testing.T) {
 	tests := []struct {
-		CAA         *CAATimeout
-		ExpectedCAA *CAATimeout
+		CAA         *Timeout
+		ExpectedCAA *Timeout
 		RevokeN     int64
 	}{
 		{

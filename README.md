@@ -12,9 +12,9 @@ A single counter used to maintain the validity of a set number of distributed se
 - [**Counter**] Can *dynamically change the number of concurrent sessions* server side with no need to update the distributed session
 - [**Counter**] Can be *shoe horned into an existing system easily*, JWT's that don't contain a 'SessionCAA' value can be considered to have a 'SessionCAA' of '0' which is the first valid issued number
 - [**Counter**] *Long lived sessions*, such as for mobile apps
-- [**CAATimeout**] Can *manage the validity of a session based on some duration*
-- [**CAATimeout**] Can *dynamically adjust the validity duration* server side
-- [**CAATimeout**] Can *revoke all sessions before some timestamp* regardless if they are still within the valid duration or not
+- [**Timeout**] Can *manage the validity of a session based on some duration*
+- [**Timeout**] Can *dynamically adjust the validity duration* server side
+- [**Timeout**] Can *revoke all sessions before some timestamp* regardless if they are still within the valid duration or not
 
 **What it doesn't do:**
 
@@ -41,12 +41,12 @@ Both Cookies and JWT's support expiration times, however you can't increase an i
 
 **Possible solution:**
 
-With the `CAATimeout` you can do all of these things with a combination of adjusting the `IsValid` duration and using the `Revoke` to set a hard deadline. You add a `SessionCAA` to the existing struct you issue to your authenticating entites and a `CAA` implementation to the entity you want to protect.
+With the `Timeout` you can do all of these things with a combination of adjusting the `IsValid` duration and using the `Revoke` to set a hard deadline. You add a `SessionCAA` to the existing struct you issue to your authenticating entites and a `CAA` implementation to the entity you want to protect.
 
 ### Status
 
 **Counter** - A previous incarnation has been used successfully in production with 15,000+ users since December 2016.
-**CAATimeout** - Has not been used in a production environment that we are aware of yet.
+**Timeout** - Has not been used in a production environment that we are aware of yet.
 
 ### Usage:
 
@@ -118,7 +118,7 @@ func (j JwtSession) Valid() error {
 }
 ```
 
-**JWT CAATimeout Authentication**:
+**JWT Timeout Authentication**:
 
 ```go
 const SudoTimeout = 5 * time.Minute
@@ -179,7 +179,7 @@ func (u *User) LogoutAllSessions() {
 }
 ```
 
-**CAATimeout Revocation**:
+**Timeout Revocation**:
 
 ```go
 type User struct {
