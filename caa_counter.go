@@ -60,9 +60,10 @@ func (caa *Counter) Revoke(n int64) {
 // and progress the CAA with out unlocking it (the session will be considered
 // invalid whilst the CAA remains locked).
 func (caa *Counter) Issue() SessionCAA {
-	defer caa.step(1)
+	sessionCAA := SessionCAA(caa.abs())
+	caa.step(1)
 
-	return SessionCAA(caa.abs())
+	return sessionCAA
 }
 
 // Indicates if the CAA has issued at least once, regardless if it has been
