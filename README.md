@@ -6,6 +6,7 @@ A single counter used to maintain the validity of a set number of distributed se
 
 ### Features:
 
+- *Fast; Really fast*, Nanosecond Issuing and validating of sessions.
 - *Central revocation, locking and unlocking* of distributed sessions
 - Tiny, *single int64 to be stored along with the entity* you wish to protect and *single int64 to store inside existing distributed session* (such as JWT or Cookie)
 - [**Counter**] Can *maintain a number of concurrent active sessions* (lets say you want to allow a user to be able to login from 5 different browsers, or 1)
@@ -46,6 +47,23 @@ Both Cookies and JWT's support expiration times, however you can't increase an i
 **Possible solution:**
 
 With the `Timeout` you can do all of these things with a combination of adjusting the `IsValid` duration and using the `Revoke` to set a hard deadline. You add a `SessionCAA` to the existing struct you issue to your authenticating entites and a `CAA` implementation to the entity you want to protect.
+
+### Performance
+
+Hot paths are blazingly fast, this package won't be the slowest link in the chain.
+
+```
+$ go test -run=^$ -bench=.
+goos: darwin
+goarch: amd64
+pkg: github.com/endiangroup/compandauth
+Benchmark_Counter_Issue-8       1000000000               2.88 ns/op
+Benchmark_Counter_IsValid-8     200000000                7.08 ns/op
+Benchmark_Timeout_IsValid-8     100000000               14.2 ns/op
+Benchmark_Timeout_Issue-8       20000000                92.0 ns/op
+PASS
+ok      github.com/endiangroup/compandauth      8.785s
+```
 
 ### Status
 
