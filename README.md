@@ -78,6 +78,17 @@ ok      github.com/endiangroup/compandauth      8.785s
 - When issuing a new session for the entity set the sessions CAA value with `session.CAA = entity.CAA.Issue()`
 - Ensure you update the entity after using `Revoke()`, `Issue()`, `Lock()` and `Unlock()` as they modify the CAA state
 
+### Synchronisation
+
+As this package was inspired by CAS, which itself is a synchronisation primitive, you do have to consider synchronisation. There are 3 situations that should be considered when using this package:
+
+1. [Unlikely] is multiple goroutines during a single request, where you may spin off goroutines during the authentication flow, for that you can use the `caa.ThreadSafe` wrapper
+2. [Likely] is a goroutine per request, where each incoming request gets a new goroutine, in that instance you should row level lock your entity for the duration of the authentication flow. (e.g. when fetching the User record, lock the User row [or ideally just their CAA] until you've ascertained the validity of their session or finished manipulating their CAA state)
+3. [Likely] is multi-server, where there is a shared database between multiple servers storing the CAA value for an entity (e.g. horizontally scaled API servers calling a central SQL DB). see 2
+
+
+You can get more specific read and write locking to increase performance, but We'll leave that to you to decide what works in your environment. See the `ThreadSafe` wrapper to understand when you need read and write locks.
+
 ### Examples:
 
 **JWT Login**:
