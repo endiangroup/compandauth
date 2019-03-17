@@ -26,6 +26,8 @@ A single counter used to maintain the validity of a set number of distributed se
 	- [**Timeout**] You can revoke all sessions before timestamp T
 - Audit trail
 	- No in built mechanism for tracking changes to CAA values, must be performed at a higher level
+- Signing
+	- You **MUST** be able to trust the incoming session CAA value, as such your session mechanism must at least sign its payload including the session CAA
 
 ### What problems does this package solve?
 
@@ -74,6 +76,7 @@ ok      github.com/endiangroup/compandauth      8.785s
 
 - The `CAA` type is added to the entity being protected (e.g. user)
 - A `SessionCAA` property is added to the session object (e.g. JWT)
+- The session payload must be at least signed or encrypted
 - When validating the session object, fetch the entity in question and check the validity of the incoming `SessionCAA` with `entity.CAA.IsValid(SessionCAA)`
 - When issuing a new session for the entity set the sessions CAA value with `session.CAA = entity.CAA.Issue()`
 - Ensure you update the entity after using `Revoke()`, `Issue()`, `Lock()` and `Unlock()` as they modify the CAA state
