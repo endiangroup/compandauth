@@ -4,6 +4,8 @@
 
 A single counter used to maintain the validity of a set number of distributed sessions. Inspired by CAS.
 
+*For a more in depth look at how it was conceived and works, see: https://endian.io/articles/compandauth/*
+
 ### Features:
 
 - *Fast; Really fast*, Nanosecond Issuing and validating of sessions.
